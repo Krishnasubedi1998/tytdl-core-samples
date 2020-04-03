@@ -4,13 +4,22 @@
 
 	[+] WATCH VIDEO AND AUDIO
 	 -> http://localhost:3000/?ytid=IUFPs3j341k
-	[+] WATCH AUDIO ONLY
+
+	[+] WATCH AUDIO ONLY [WEBM FORMAT]
 	 -> http://localhost:3000/?ytid=IUFPs3j341k&audioonly
+
+	[+] WATCH AUDIO ONLY [MP3 FORMAT]
+	 -> http://localhost:3000/?ytid=IUFPs3j341k&audioonly&mp3
+
+	[!] MP3 CONVERSION USES fluent-ffmpeg -> so total length will be unknown as the webm is
+	[!] converted to mp3 on the fly. But eventually the mp3 is completely converted without
+	[!] any problems at least during the testing
 
 	DETAILS ABOUT QUERY PARAMS
 
 	ytid  => Required => Youtube id (cannot be playlist)
-	audioonly => Optional => Must be one of these options (mp3,mp4)
+	audioonly => Optional if present then the audio of webm format will be played
+	mp3 => Optional audio of mp3 format will be streamed (converted on the fly with fluent-ffmpeg)
 
 */
 
@@ -19,6 +28,8 @@ const http = require('http');
 const url = require('url');
 
 const ytdl     = require('ytdl-core');
+
+const ffmpeg   = require('fluent-ffmpeg');
 
 function handleRequest(req, res) {
 
@@ -38,18 +49,25 @@ function handleRequest(req, res) {
 		  //filter: 'audioonly',
 		});
 
+		if('mp3' in q) {
+
+			ffmpeg(stream)
+			  .audioBitrate(128)
+			  .format('mp3')
+			  .on('error', (err) => {/*console.error(err);*/})
+			  .on('end', () => {/*console.log('Finished!');*/})
+			  .pipe(res, { end: true });
+
+		} else {
+
+			stream.pipe(res);
+		}
 	} else {
 
 		stream = ytdl(q.ytid, {});
+		stream.pipe(res);
 	}
 
-	// res.writeHead(200, {
-	//     'Access-Control-Allow-Origin': '*',
-	//     'Connection': 'Keep-Alive',
-	//     'Content-Type': 'video/mp4'
-	// }); // NOT REQUIRED
-
-	stream.pipe(res);
 	stream.on('error', (err) => {
 		res.writeHead(404, {'Content-Type': 'application/json'});
 		res.end(JSON.stringify({msg: 'Invalid video Id'}));
