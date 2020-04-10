@@ -5,6 +5,10 @@
 	[+] WATCH VIDEO AND AUDIO
 	 -> http://localhost:3000/?ytid=IUFPs3j341k
 
+	[+] WATCH VIDEO AND AUDIO (SELECT VIDEO QUALITY)
+	 -> http://localhost:3000/?ytid=IUFPs3j341k&quality=360p
+	 [quality can be 360p, 480p, 720p, 1080p]
+
 	[+] WATCH AUDIO ONLY [WEBM FORMAT]
 	 -> http://localhost:3000/?ytid=IUFPs3j341k&audioonly
 
@@ -20,6 +24,7 @@
 	ytid  => Required => Youtube id (cannot be playlist)
 	audioonly => Optional if present then the audio of webm format will be played
 	mp3 => Optional audio of mp3 format will be streamed (converted on the fly with fluent-ffmpeg)
+	quality=>Optional(for video only) and must be any one of these values [360p, 480p, 720p, 1080p]
 
 */
 
@@ -30,6 +35,14 @@ const url = require('url');
 const ytdl     = require('ytdl-core');
 
 const ffmpeg   = require('fluent-ffmpeg');
+
+// video quality map query: itag --> (only mp4 choosen) there are more itags(for webm) in ytdl-core docs
+const videoQuality = {
+	'360p': 18,
+	'480p': 135,
+	'720p': 136,
+	'1080p': 137
+};
 
 function handleRequest(req, res) {
 
@@ -64,7 +77,14 @@ function handleRequest(req, res) {
 		}
 	} else {
 
-		stream = ytdl(q.ytid, {});
+		const options = {};
+
+		if(q.quality && q.quality != '') {
+			if(Object.keys(videoQuality).includes(q.quality))
+				options['quality'] = videoQuality[q.quality];
+		}
+
+		stream = ytdl(q.ytid, options);
 		stream.pipe(res);
 	}
 
